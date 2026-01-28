@@ -5,54 +5,90 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>纳斯达克100 策略回测</title>
   <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <div class="container">
     <h1>纳斯达克100 双资产回测工具</h1>
+    <p class="subtitle">使用真实 QQQ 历史数据进行策略模拟（1999-2026）</p>
 
     <section class="controls">
-      <label>初始资金（USD） <input id="initialCapital" type="number" value="100000" /></label>
-      <label>纳斯达克100 比例（%） <input id="allocNasdaq" type="number" value="60" min="0" max="100" /></label>
-      <label>货币基金 年化收益率（%） <input id="cashYield" type="number" value="2" step="0.01" /></label>
-      <label><input id="rebalance" type="checkbox" checked /> 每年再平衡到初始比例</label>
+      <div class="control-group">
+        <label>初始资金（USD）</label>
+        <input id="initialCapital" type="number" value="100000" />
+      </div>
+      
+      <div class="control-group">
+        <label>纳斯达克100 配置比例（%）</label>
+        <input id="allocNasdaq" type="number" value="60" min="0" max="100" />
+      </div>
+      
+      <div class="control-group">
+        <label>货币基金 年化收益率（%）</label>
+        <input id="cashYield" type="number" value="2" step="0.01" />
+      </div>
+      
+      <div class="control-group">
+        <label><input id="rebalance" type="checkbox" checked /> 每年再平衡到初始比例</label>
+      </div>
 
       <fieldset class="withdraw">
-        <legend>年度提取</legend>
-        <label><input name="wdMode" type="radio" value="none" checked /> 不提取</label>
-        <label><input name="wdMode" type="radio" value="fixed" /> 固定金额（USD） <input id="wdFixed" type="number" value="0" /></label>
-        <label><input name="wdMode" type="radio" value="percent" /> 百分比（%） <input id="wdPct" type="number" value="0" step="0.1" /></label>
-        <label>提取时间点：
+        <legend>年度提取策略</legend>
+        <div class="withdraw-option">
+          <label><input name="wdMode" type="radio" value="none" checked /> 不提取</label>
+        </div>
+        <div class="withdraw-option">
+          <label><input name="wdMode" type="radio" value="fixed" /> 固定金额（USD）</label>
+          <input id="wdFixed" type="number" value="0" />
+        </div>
+        <div class="withdraw-option">
+          <label><input name="wdMode" type="radio" value="percent" /> 百分比（%）</label>
+          <input id="wdPct" type="number" value="0" step="0.1" />
+        </div>
+        <div class="withdraw-option">
+          <label>提取时间点：</label>
           <select id="wdWhen"><option value="start">年初</option><option value="end">年末</option></select>
-        </label>
+        </div>
       </fieldset>
 
-      <label>回测起始年（包含） <input id="startYear" type="number" value="2020" /></label>
-      <label>回测结束年（包含） <input id="endYear" type="number" value="2026" /></label>
-
-      <div class="data-row">
-        <label>上传或粘贴 年度收益 CSV（Year,ReturnPercent）
-          <input id="file" type="file" accept=".csv" />
-        </label>
-        <button id="loadSample">载入示例年份（占位）</button>
+      <div class="control-group">
+        <label>回测时间段</label>
+        <div class="date-range">
+          <div>
+            <label>起始年</label>
+            <input id="startYear" type="number" value="1999" />
+          </div>
+          <span class="dash">~</span>
+          <div>
+            <label>结束年</label>
+            <input id="endYear" type="number" value="2026" />
+          </div>
+        </div>
       </div>
 
       <div class="actions">
-        <button id="run">运行回测</button>
-        <button id="download">下载结果 CSV</button>
+        <button id="run" class="btn-primary">运行回测</button>
+        <button id="download" class="btn-secondary">下载结果 CSV</button>
       </div>
     </section>
 
     <section class="output">
-      <canvas id="chart" width="800" height="300"></canvas>
-      <table id="results"><thead><tr><th>Year</th><th>Total</th><th>Nasdaq</th><th>Cash</th></tr></thead><tbody></tbody></table>
+      <h2>回测结果</h2>
+      <canvas id="chart" width="1000" height="400"></canvas>
+      <table id="results">
+        <thead>
+          <tr><th>年份</th><th>总资产</th><th>纳斯达克</th><th>货币基金</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </section>
 
     <section class="notes">
-      <h3>说明</h3>
+      <h3>关于此工具</h3>
       <ul>
-        <li>请准备纳斯达克100 指数或代表性ETF（如 QQQ）每年的年化收益（%），CSV 格式：Year,ReturnPercent。</li>
-        <li>如果遇到跨域取数据问题，请手动下载历史数据并导出为年度收益后上传。</li>
-        <li>默认年份区间为 2020 到 2026；页面包含基础模拟逻辑和导出功能。</li>
+        <li>使用真实 QQQ（纳斯达克100 ETF）从 1999 年至 2026 年 1 月 28 日的年度回报数据。</li>
+        <li>支持自定义时间范围、资产配置、再平衡策略和定期提取方案。</li>
+        <li>图表支持鼠标交互：悬停查看具体数值，可拖动缩放或平移。</li>
       </ul>
     </section>
   </div>
