@@ -19,7 +19,6 @@ function runBacktest(){
   const rebalance = $('rebalance').checked;
   const startYear = parseInt($('startYear').value);
   const endYear = parseInt($('endYear').value);
-  const wdWhen = $('wdWhen').value;
   const wdMode = document.querySelector('input[name="wdMode"]:checked').value;
   const wdFixed = parseFloat($('wdFixed').value)||0;
   const wdPct = (parseFloat($('wdPct').value)||0)/100;
@@ -30,44 +29,44 @@ function runBacktest(){
   const rows = [];
 
   for(let y=startYear;y<=endYear;y++){
-    let total = nasdaq + cash;
-
-    // withdrawal at start
-    if(wdWhen==='start' && wdMode!=='none'){
-      let wd = wdMode==='fixed' ? wdFixed : total * wdPct;
-      wd = Math.min(wd, total);
-      // proportionally take from each bucket
-      const nasdaqShare = total>0 ? nasdaq/total : 0;
-      nasdaq -= wd * nasdaqShare;
-      cash -= wd * (1-nasdaqShare);
-    }
-
-    // apply returns
+    let yearStart = nasdaq + cash;
+    
+    // Apply returns
     const r = (yearlyReturns[y]!==undefined) ? yearlyReturns[y]/100 : 0;
     nasdaq *= (1 + r);
     cash *= (1 + cashYield);
+    let afterReturn = nasdaq + cash;
 
-    // withdrawal at end
-    if(wdWhen==='end' && wdMode!=='none'){
-      total = nasdaq + cash;
-      let wd = wdMode==='fixed' ? wdFixed : total * wdPct;
-      wd = Math.min(wd, total);
-      const nasdaqShare = total>0 ? nasdaq/total : 0;
-      nasdaq -= wd * nasdaqShare;
-      cash -= wd * (1-nasdaqShare);
+    // Withdrawal (at rebalance time)
+    let withdrawal = 0;
+    if(wdMode!=='none'){
+      withdrawal = wdMode==='fixed' ? wdFixed : afterReturn * wdPct;
+      withdrawal = Math.min(withdrawal, afterReturn);
+      // Proportionally withdraw from each bucket
+      const nasdaqShare = afterReturn>0 ? nasdaq/afterReturn : 0;
+      nasdaq -= withdrawal * nasdaqShare;
+      cash -= withdrawal * (1-nasdaqShare);
+    }
+    let afterWithdraw = nasdaq + cash;
+
+    // Rebalance
+    if(rebalance && afterWithdraw > 0){
+      nasdaq = afterWithdraw * allocNasdaq;
+      cash = afterWithdraw - nasdaq;
     }
 
-    // rebalance
-    if(rebalance){
-      const tot = Math.max(0, nasdaq + cash);
-      nasdaq = tot * allocNasdaq;
-      cash = tot - nasdaq;
-    }
+    rows.push({
+      year: y,
+      yearStart: yearStart,
+      afterReturn: afterReturn,
+      withdrawal: withdrawal,
+      afterWithdraw: afterWithdraw,
+      nasdaq: nasdaq,
+      cash: cash,
+      total: nasdaq + cash
+    });
 
-    total = nasdaq + cash;
-    rows.push({year: y, total, nasdaq, cash});
-
-    if(total <= 0) break;
+    if(afterWithdraw <= 0) break;
   }
 
   renderResults(rows, initial);
@@ -104,7 +103,15 @@ function renderResults(rows, initialCapital){
   
   for(const r of rows){
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${r.year}</td><td>¥${r.total.toFixed(2)}</td><td>¥${r.nasdaq.toFixed(2)}</td><td>¥${r.cash.toFixed(2)}</td>`;
+    tr.innerHTML = `
+      <td>${r.year}</td>
+      <td>¥${r.yearStart.toFixed(2)}</td>
+      <td>¥${r.afterReturn.toFixed(2)}</td>
+      <td>¥${r.withdrawal.toFixed(2)}</td>
+      <td>¥${r.afterWithdraw.toFixed(2)}</td>
+      <td>¥${r.nasdaq.toFixed(2)}</td>
+      <td>¥${r.cash.toFixed(2)}</td>
+    `;
     tbody.appendChild(tr);
     labels.push(r.year.toString());
     totals.push(Math.round(r.total * 100) / 100);
@@ -245,7 +252,7 @@ function downloadCSV(){
     const cols = Array.from(tr.children).map(td=>td.textContent);
     rows.push(cols.join(','));
   }
-  const csv = '年份,总资产(¥),纳斯达克(¥),货币基金(¥)\n' + rows.join('\n');
+  const csv = '年份,年初总资产(¥),应用收益后(¥),提取金额(¥),提取后(¥),再平衡-纳斯达克(¥),再平衡-货币基金(¥)\n' + rows.join('\n');
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

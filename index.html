@@ -45,10 +45,6 @@
           <label><input name="wdMode" type="radio" value="percent" /> 百分比（%）</label>
           <input id="wdPct" type="number" value="0" step="0.1" />
         </div>
-        <div class="withdraw-option">
-          <label>提取时间点：</label>
-          <select id="wdWhen"><option value="start">年初</option><option value="end">年末</option></select>
-        </div>
       </fieldset>
 
       <div class="control-group">
@@ -76,12 +72,22 @@
       <h2>回测结果</h2>
       <div id="metrics" class="metrics-container"></div>
       <canvas id="chart" width="1000" height="400"></canvas>
-      <table id="results">
-        <thead>
-          <tr><th>年份</th><th>总资产(¥)</th><th>纳斯达克(¥)</th><th>货币基金(¥)</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <div class="table-wrapper">
+        <table id="results">
+          <thead>
+            <tr>
+              <th>年份</th>
+              <th>年初总资产(¥)</th>
+              <th>应用收益后(¥)</th>
+              <th>提取金额(¥)</th>
+              <th>提取后(¥)</th>
+              <th>再平衡-纳斯达克(¥)</th>
+              <th>再平衡-货币基金(¥)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </section>
 
     <section class="notes">
