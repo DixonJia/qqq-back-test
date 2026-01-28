@@ -56,6 +56,7 @@ function runBacktest(){
     }
 
     rows.push({
+      nasdaqReturnPct: (r*100),
       year: y,
       yearStart: yearStart,
       afterReturn: afterReturn,
@@ -72,8 +73,38 @@ function runBacktest(){
   renderResults(rows, initial);
 }
 
+function computeIRR(cashflows){
+  // cashflows: array of numbers where index = year (0 = t0)
+  function npv(rate){
+    let s = 0;
+    for(let i=0;i<cashflows.length;i++) s += cashflows[i] / Math.pow(1 + rate, i);
+    return s;
+  }
+  // find sign change
+  let low = -0.9999, high = 10;
+  let fLow = npv(low), fHigh = npv(high);
+  let attempts = 0;
+  while(fLow * fHigh > 0 && attempts < 60){
+    high *= 2;
+    fHigh = npv(high);
+    attempts++;
+    if(high > 1e6) return NaN;
+  }
+  if(fLow * fHigh > 0) return NaN;
+  // bisection
+  for(let i=0;i<100;i++){
+    const mid = (low + high) / 2;
+    const fMid = npv(mid);
+    if(fMid === 0) return mid;
+    if(fLow * fMid < 0){
+      high = mid; fHigh = fMid;
+    } else { low = mid; fLow = fMid; }
+  }
+  return (low + high) / 2;
+}
+
 function calculateMetrics(rows, initialCapital){
-  if(rows.length === 0) return {annualReturn: 0, maxDrawdown: 0};
+  if(rows.length === 0) return {annualReturn: 0, maxDrawdown: 0, totalWithdrawn:0, irr:NaN};
   
   const finalValue = rows[rows.length - 1].total;
   const years = rows.length;
@@ -89,8 +120,18 @@ function calculateMetrics(rows, initialCapital){
     if(dd > maxDD) maxDD = dd;
   }
   const maxDrawdown = maxDD * 100;
-  
-  return {annualReturn, maxDrawdown, totalReturn: totalReturn * 100};
+
+  // total withdrawn and IRR (considering withdrawals + final remaining)
+  const cashflows = [];
+  cashflows.push(-initialCapital);
+  let totalWithdrawn = 0;
+  for(const r of rows){ cashflows.push(r.withdrawal); totalWithdrawn += r.withdrawal; }
+  // final remaining portfolio sold at end
+  cashflows.push(rows[rows.length-1].total);
+  const irrRate = computeIRR(cashflows);
+  const irrPct = isNaN(irrRate) ? NaN : irrRate * 100;
+
+  return {annualReturn, maxDrawdown, totalReturn: totalReturn * 100, totalWithdrawn, irr: irrPct};
 }
 
 function renderResults(rows, initialCapital){
@@ -99,12 +140,14 @@ function renderResults(rows, initialCapital){
   const labels = [];
   const totals = [];
   const nasdaqVals = [];
+  const withdrawals = [];
   const cashVals = [];
   
   for(const r of rows){
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${r.year}</td>
+      <td>${r.nasdaqReturnPct.toFixed(2)}%</td>
       <td>¥${r.yearStart.toFixed(2)}</td>
       <td>¥${r.afterReturn.toFixed(2)}</td>
       <td>¥${r.withdrawal.toFixed(2)}</td>
@@ -116,12 +159,13 @@ function renderResults(rows, initialCapital){
     labels.push(r.year.toString());
     totals.push(Math.round(r.total * 100) / 100);
     nasdaqVals.push(Math.round(r.nasdaq * 100) / 100);
+    withdrawals.push(Math.round(r.withdrawal * 100) / 100);
     cashVals.push(Math.round(r.cash * 100) / 100);
   }
   
   const metrics = calculateMetrics(rows, initialCapital);
   displayMetrics(metrics, rows[rows.length - 1].total, initialCapital);
-  drawChartJS(labels, totals, nasdaqVals, cashVals);
+  drawChartJS(labels, totals, nasdaqVals, cashVals, withdrawals);
 }
 
 function displayMetrics(metrics, finalValue, initialCapital){
@@ -144,10 +188,18 @@ function displayMetrics(metrics, finalValue, initialCapital){
       <div class="metric-label">最终资产</div>
       <div class="metric-value">¥${finalValue.toFixed(2)}</div>
     </div>
+    <div class="metric-item">
+      <div class="metric-label">累计提取</div>
+      <div class="metric-value">¥${metrics.totalWithdrawn ? metrics.totalWithdrawn.toFixed(2) : '0.00'}</div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-label">考虑提取的年化 (IRR)</div>
+      <div class="metric-value" style="color: ${metrics.irr>=0 ? '#059669' : '#dc2626'}">${isNaN(metrics.irr) ? 'N/A' : metrics.irr.toFixed(2) + '%'}</div>
+    </div>
   `;
 }
 
-function drawChartJS(labels, totals, nasdaqVals, cashVals){
+function drawChartJS(labels, totals, nasdaqVals, cashVals, withdrawals){
   const ctx = $('chart').getContext('2d');
   
   // 销毁旧图表
@@ -194,6 +246,16 @@ function drawChartJS(labels, totals, nasdaqVals, cashVals){
           pointHoverRadius: 5,
           pointBackgroundColor: '#2ca02c'
         }
+        ,
+        {
+          type: 'bar',
+          label: '提取金额 (¥)',
+          data: withdrawals,
+          backgroundColor: 'rgba(219,39,91,0.5)',
+          borderColor: 'rgba(219,39,91,0.8)',
+          borderWidth: 1,
+          yAxisID: 'y'
+        }
       ]
     },
     options: {
@@ -215,6 +277,9 @@ function drawChartJS(labels, totals, nasdaqVals, cashVals){
           displayColors: true,
           callbacks: {
             label: function(ctx){
+              if(ctx.dataset.type === 'bar'){
+                return ctx.dataset.label + ': ¥' + ctx.parsed.y.toFixed(2);
+              }
               return ctx.dataset.label + ': ¥' + ctx.parsed.y.toFixed(2);
             }
           }
@@ -252,7 +317,7 @@ function downloadCSV(){
     const cols = Array.from(tr.children).map(td=>td.textContent);
     rows.push(cols.join(','));
   }
-  const csv = '年份,年初总资产(¥),应用收益后(¥),提取金额(¥),提取后(¥),再平衡-纳斯达克(¥),再平衡-货币基金(¥)\n' + rows.join('\n');
+  const csv = '年份,纳斯达克收益率(%),年初总资产(¥),应用收益后(¥),提取金额(¥),提取后(¥),再平衡-纳斯达克(¥),再平衡-货币基金(¥)\n' + rows.join('\n');
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
