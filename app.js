@@ -70,10 +70,31 @@ function runBacktest(){
     if(total <= 0) break;
   }
 
-  renderResults(rows);
+  renderResults(rows, initial);
 }
 
-function renderResults(rows){
+function calculateMetrics(rows, initialCapital){
+  if(rows.length === 0) return {annualReturn: 0, maxDrawdown: 0};
+  
+  const finalValue = rows[rows.length - 1].total;
+  const years = rows.length;
+  const totalReturn = (finalValue - initialCapital) / initialCapital;
+  const annualReturn = (Math.pow(1 + totalReturn, 1/years) - 1) * 100;
+  
+  // 最大回撤
+  let peakValue = initialCapital;
+  let maxDD = 0;
+  for(const r of rows){
+    if(r.total > peakValue) peakValue = r.total;
+    const dd = (peakValue - r.total) / peakValue;
+    if(dd > maxDD) maxDD = dd;
+  }
+  const maxDrawdown = maxDD * 100;
+  
+  return {annualReturn, maxDrawdown, totalReturn: totalReturn * 100};
+}
+
+function renderResults(rows, initialCapital){
   const tbody = $('results').querySelector('tbody');
   tbody.innerHTML = '';
   const labels = [];
@@ -83,7 +104,7 @@ function renderResults(rows){
   
   for(const r of rows){
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${r.year}</td><td>$${r.total.toFixed(2)}</td><td>$${r.nasdaq.toFixed(2)}</td><td>$${r.cash.toFixed(2)}</td>`;
+    tr.innerHTML = `<td>${r.year}</td><td>¥${r.total.toFixed(2)}</td><td>¥${r.nasdaq.toFixed(2)}</td><td>¥${r.cash.toFixed(2)}</td>`;
     tbody.appendChild(tr);
     labels.push(r.year.toString());
     totals.push(Math.round(r.total * 100) / 100);
@@ -91,7 +112,32 @@ function renderResults(rows){
     cashVals.push(Math.round(r.cash * 100) / 100);
   }
   
+  const metrics = calculateMetrics(rows, initialCapital);
+  displayMetrics(metrics, rows[rows.length - 1].total, initialCapital);
   drawChartJS(labels, totals, nasdaqVals, cashVals);
+}
+
+function displayMetrics(metrics, finalValue, initialCapital){
+  const metricsDiv = $('metrics');
+  if(!metricsDiv) return;
+  metricsDiv.innerHTML = `
+    <div class="metric-item">
+      <div class="metric-label">总收益率</div>
+      <div class="metric-value" style="color: ${metrics.totalReturn >= 0 ? '#059669' : '#dc2626'}">${metrics.totalReturn.toFixed(2)}%</div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-label">年化收益率</div>
+      <div class="metric-value" style="color: ${metrics.annualReturn >= 0 ? '#059669' : '#dc2626'}">${metrics.annualReturn.toFixed(2)}%</div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-label">最大回撤</div>
+      <div class="metric-value" style="color: #dc2626">-${metrics.maxDrawdown.toFixed(2)}%</div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-label">最终资产</div>
+      <div class="metric-value">¥${finalValue.toFixed(2)}</div>
+    </div>
+  `;
 }
 
 function drawChartJS(labels, totals, nasdaqVals, cashVals){
@@ -106,7 +152,7 @@ function drawChartJS(labels, totals, nasdaqVals, cashVals){
       labels: labels,
       datasets: [
         {
-          label: '总资产 (USD)',
+          label: '总资产 (¥)',
           data: totals,
           borderColor: '#1f77b4',
           backgroundColor: 'rgba(31, 119, 180, 0.05)',
@@ -118,7 +164,7 @@ function drawChartJS(labels, totals, nasdaqVals, cashVals){
           pointBackgroundColor: '#1f77b4'
         },
         {
-          label: '纳斯达克 (USD)',
+          label: '纳斯达克 (¥)',
           data: nasdaqVals,
           borderColor: '#ff7f0e',
           backgroundColor: 'rgba(255, 127, 14, 0.05)',
@@ -130,7 +176,7 @@ function drawChartJS(labels, totals, nasdaqVals, cashVals){
           pointBackgroundColor: '#ff7f0e'
         },
         {
-          label: '货币基金 (USD)',
+          label: '货币基金 (¥)',
           data: cashVals,
           borderColor: '#2ca02c',
           backgroundColor: 'rgba(44, 160, 44, 0.05)',
@@ -162,7 +208,7 @@ function drawChartJS(labels, totals, nasdaqVals, cashVals){
           displayColors: true,
           callbacks: {
             label: function(ctx){
-              return ctx.dataset.label + ': $' + ctx.parsed.y.toFixed(2);
+              return ctx.dataset.label + ': ¥' + ctx.parsed.y.toFixed(2);
             }
           }
         }
@@ -175,11 +221,11 @@ function drawChartJS(labels, totals, nasdaqVals, cashVals){
         },
         y: {
           display: true,
-          title: { display: true, text: '资产价值 (USD)' },
+          title: { display: true, text: '资产价值 (¥)' },
           grid: { color: 'rgba(0,0,0,0.1)' },
           ticks: {
             callback: function(val){
-              return '$' + val.toLocaleString();
+              return '¥' + val.toLocaleString();
             }
           }
         }
@@ -199,7 +245,7 @@ function downloadCSV(){
     const cols = Array.from(tr.children).map(td=>td.textContent);
     rows.push(cols.join(','));
   }
-  const csv = 'Year,Total,Nasdaq,Cash\n' + rows.join('\n');
+  const csv = '年份,总资产(¥),纳斯达克(¥),货币基金(¥)\n' + rows.join('\n');
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

@@ -14,7 +14,7 @@
 
     <section class="controls">
       <div class="control-group">
-        <label>初始资金（USD）</label>
+        <label>初始资金（¥）</label>
         <input id="initialCapital" type="number" value="100000" />
       </div>
       
@@ -38,7 +38,7 @@
           <label><input name="wdMode" type="radio" value="none" checked /> 不提取</label>
         </div>
         <div class="withdraw-option">
-          <label><input name="wdMode" type="radio" value="fixed" /> 固定金额（USD）</label>
+          <label><input name="wdMode" type="radio" value="fixed" /> 固定金额（¥）</label>
           <input id="wdFixed" type="number" value="0" />
         </div>
         <div class="withdraw-option">
@@ -74,10 +74,11 @@
 
     <section class="output">
       <h2>回测结果</h2>
+      <div id="metrics" class="metrics-container"></div>
       <canvas id="chart" width="1000" height="400"></canvas>
       <table id="results">
         <thead>
-          <tr><th>年份</th><th>总资产</th><th>纳斯达克</th><th>货币基金</th></tr>
+          <tr><th>年份</th><th>总资产(¥)</th><th>纳斯达克(¥)</th><th>货币基金(¥)</th></tr>
         </thead>
         <tbody></tbody>
       </table>
