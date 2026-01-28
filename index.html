@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>纳斯达克100 策略回测</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>纳斯达克100 双资产回测工具</h1>
+
+    <section class="controls">
+      <label>初始资金（USD） <input id="initialCapital" type="number" value="100000" /></label>
+      <label>纳斯达克100 比例（%） <input id="allocNasdaq" type="number" value="60" min="0" max="100" /></label>
+      <label>货币基金 年化收益率（%） <input id="cashYield" type="number" value="2" step="0.01" /></label>
+      <label><input id="rebalance" type="checkbox" checked /> 每年再平衡到初始比例</label>
+
+      <fieldset class="withdraw">
+        <legend>年度提取</legend>
+        <label><input name="wdMode" type="radio" value="none" checked /> 不提取</label>
+        <label><input name="wdMode" type="radio" value="fixed" /> 固定金额（USD） <input id="wdFixed" type="number" value="0" /></label>
+        <label><input name="wdMode" type="radio" value="percent" /> 百分比（%） <input id="wdPct" type="number" value="0" step="0.1" /></label>
+        <label>提取时间点：
+          <select id="wdWhen"><option value="start">年初</option><option value="end">年末</option></select>
+        </label>
+      </fieldset>
+
+      <label>回测起始年（包含） <input id="startYear" type="number" value="2020" /></label>
+      <label>回测结束年（包含） <input id="endYear" type="number" value="2026" /></label>
+
+      <div class="data-row">
+        <label>上传或粘贴 年度收益 CSV（Year,ReturnPercent）
+          <input id="file" type="file" accept=".csv" />
+        </label>
+        <button id="loadSample">载入示例年份（占位）</button>
+      </div>
+
+      <div class="actions">
+        <button id="run">运行回测</button>
+        <button id="download">下载结果 CSV</button>
+      </div>
+    </section>
+
+    <section class="output">
+      <canvas id="chart" width="800" height="300"></canvas>
+      <table id="results"><thead><tr><th>Year</th><th>Total</th><th>Nasdaq</th><th>Cash</th></tr></thead><tbody></tbody></table>
+    </section>
+
+    <section class="notes">
+      <h3>说明</h3>
+      <ul>
+        <li>请准备纳斯达克100 指数或代表性ETF（如 QQQ）每年的年化收益（%），CSV 格式：Year,ReturnPercent。</li>
+        <li>如果遇到跨域取数据问题，请手动下载历史数据并导出为年度收益后上传。</li>
+        <li>默认年份区间为 2020 到 2026；页面包含基础模拟逻辑和导出功能。</li>
+      </ul>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
