@@ -205,6 +205,9 @@ function drawChartJS(labels, totals, nasdaqVals, cashVals, withdrawals){
   // 销毁旧图表
   if(chart) chart.destroy();
   
+  // adjust visual density for small screens
+  const isSmall = (typeof window !== 'undefined') ? window.innerWidth <= 420 : false;
+
   chart = new Chart(ctx, {
     type: 'line',
     data: {
@@ -218,8 +221,8 @@ function drawChartJS(labels, totals, nasdaqVals, cashVals, withdrawals){
           borderWidth: 2.5,
           fill: true,
           tension: 0.3,
-          pointRadius: 4,
-          pointHoverRadius: 6,
+          pointRadius: isSmall ? 2 : 4,
+          pointHoverRadius: isSmall ? 4 : 6,
           pointBackgroundColor: '#1f77b4'
         },
         {
@@ -230,8 +233,8 @@ function drawChartJS(labels, totals, nasdaqVals, cashVals, withdrawals){
           borderWidth: 1.5,
           fill: false,
           tension: 0.3,
-          pointRadius: 2,
-          pointHoverRadius: 5,
+          pointRadius: isSmall ? 1 : 2,
+          pointHoverRadius: isSmall ? 3 : 5,
           pointBackgroundColor: '#ff7f0e'
         },
         {
@@ -242,8 +245,8 @@ function drawChartJS(labels, totals, nasdaqVals, cashVals, withdrawals){
           borderWidth: 1.5,
           fill: false,
           tension: 0.3,
-          pointRadius: 2,
-          pointHoverRadius: 5,
+          pointRadius: isSmall ? 1 : 2,
+          pointHoverRadius: isSmall ? 3 : 5,
           pointBackgroundColor: '#2ca02c'
         }
         ,
@@ -260,7 +263,7 @@ function drawChartJS(labels, totals, nasdaqVals, cashVals, withdrawals){
     },
     options: {
       responsive: true,
-      maintainAspectRatio: true,
+      maintainAspectRatio: false, // allow the chart to fill the wrapper height
       plugins: {
         legend: {
           display: true,
@@ -308,6 +311,11 @@ function drawChartJS(labels, totals, nasdaqVals, cashVals, withdrawals){
       }
     }
   });
+
+  // redraw/responsive tweak when device orientation changes
+  if(typeof window !== 'undefined'){
+    window.addEventListener('orientationchange', ()=>{ if(chart) chart.resize(); });
+  }
 }
 
 function downloadCSV(){
